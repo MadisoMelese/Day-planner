@@ -1,29 +1,101 @@
+// import express from "express";
+// import { ApolloServer } from "apollo-server-express";
+// import dotenv from "dotenv";
+// import { userTypeDefs } from "./src/typedefs/userTypeDefs.js";
+// import { userResolvers } from "./src/resolvers/userResolvers.js";
+// import { taskTypeDefs } from "./src/typedefs/taskTypeDefs.js";
+// import { taskResolvers } from "./src/resolvers/taskResolvers.js";
+// import "./src/db/connect.js";
+
+// dotenv.config();
+
+// const app = express();
+// const port = process.env.PORT || 4000;
+
+// const server = new ApolloServer({
+//   typeDefs: [userTypeDefs, taskTypeDefs],
+//   resolvers: [userResolvers, taskResolvers],
+// });
+
+// await server.start();
+// server.applyMiddleware({ app, path: "/graphql" });
+
+// app.get("/", (req, res) => {
+//   res.send("✅ Task Organizer Backend is Running");
+// });
+
+// app.listen(port, () => {
+//   console.log(`🚀 Server ready at http://localhost:${port}${server.graphqlPath}`);
+// });
+
+
+
+// src/index.js
+
 import express from "express";
+import http from "http";
+import { WebSocketServer } from "ws";
+import { useServer } from "graphql-ws/lib/use/ws";
+
 import { ApolloServer } from "apollo-server-express";
+import { makeExecutableSchema } from "@graphql-tools/schema";
 import dotenv from "dotenv";
-import { userTypeDefs } from "./src/typedefs/userTypeDefs.js";
-import { userResolvers } from "./src/resolvers/userResolvers.js";
-import { taskTypeDefs } from "./src/typedefs/taskTypeDefs.js";
-import { taskResolvers } from "./src/resolvers/taskResolvers.js";
-import "./src/db/connect.js";
+import { pool } from "./src/db/connect.js";
+import typeDefs from "./src/typedefs/index.js";
+import resolvers from "./src/resolvers/index.js";
+import authRoutes from "./src/rest/authRoutes.js";
+import { logEvent } from "./src/utils/logger.js";
 
 dotenv.config();
 
-const app = express();
-const port = process.env.PORT || 4000;
+async function start() {
+  const app = express();
+  app.use(express.json());
 
-const server = new ApolloServer({
-  typeDefs: [userTypeDefs, taskTypeDefs],
-  resolvers: [userResolvers, taskResolvers],
-});
+  // REST auth routes
+  app.use("/auth", authRoutes);
 
-await server.start();
-server.applyMiddleware({ app, path: "/graphql" });
+  // GraphQL schema
+  const schema = makeExecutableSchema({ typeDefs, resolvers });
 
-app.get("/", (req, res) => {
-  res.send("✅ Task Organizer Backend is Running");
-});
+  // HTTP server
+  const httpServer = http.createServer(app);
 
-app.listen(port, () => {
-  console.log(`🚀 Server ready at http://localhost:${port}${server.graphqlPath}`);
+  // WebSocket server for GraphQL subscriptions
+  const wsServer = new WebSocketServer({
+    server: httpServer,
+    path: "/graphql",
+  });
+
+  // GraphQL WS server
+  const serverCleanup = useServer({ schema }, wsServer);
+
+  // Apollo Server
+  const server = new ApolloServer({
+    schema,
+    plugins: [
+      {
+        async serverWillStart() {
+          return {
+            async drainServer() {
+              await serverCleanup?.dispose?.();
+            },
+          };
+        },
+      },
+    ],
+  });
+
+  await server.start();
+  server.applyMiddleware({ app, path: "/graphql" });
+
+  const port = process.env.PORT || 4000;
+  httpServer.listen(port, () => {
+    console.log(`Server ready at http://localhost:${port}${server.graphqlPath}`);
+    console.log(`Subscriptions ready at ws://localhost:${port}${server.graphqlPath}`);
+  });
+}
+
+start().catch((err) => {
+  console.error("Fatal server start error", err);
 });
