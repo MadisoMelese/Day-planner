@@ -8,9 +8,7 @@ import { createAccessToken, createRefreshToken } from "../utils/token.js";
 dotenv.config();
 
 export const userResolvers = {
-  Query: {
-    _dummy: () => "API is running 🚀",
-  },
+
   Mutation: {
     register: async (_, { email, password }) => {
       const hashedPassword = await bcrypt.hash(password, 10);

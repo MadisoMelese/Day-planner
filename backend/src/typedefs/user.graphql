@@ -1,0 +1,24 @@
+type User {
+  id: ID!
+  email: String!
+  status: String!
+}
+
+type AuthPayload {
+  accessToken: String!
+  user: User!
+}
+
+type Query {
+  me: User
+  getWorkspace(id: ID!): Workspace
+  taskStatusUpdated(workspaceId: ID!): Task
+}
+
+type Mutation {
+  register(email: String!, password: String!): User
+  login(email: String!, password: String!): AuthPayload
+  refreshToken(token: String!): AuthPayload
+  forgotPassword(email: String!): Boolean
+  updatePassword(oldPassword: String!, newPassword: String!): Boolean
+}

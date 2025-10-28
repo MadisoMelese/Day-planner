@@ -2,4 +2,3 @@ type Query
 type Mutation
 type Subscription {
   taskUpdated: Task
-}

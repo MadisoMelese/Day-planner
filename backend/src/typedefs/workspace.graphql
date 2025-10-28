@@ -1,0 +1,7 @@
+type Workspace {
+  id: ID!
+  name: String!
+  owner_id: Int!
+  created_at: String
+}
+
