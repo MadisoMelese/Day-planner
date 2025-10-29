@@ -50,10 +50,10 @@ dotenv.config();
 
 async function start() {
   const app = express();
-  app.use(express.json());
+  // app.use(express.json());
 
   // REST auth routes
-  app.use("/auth", authRoutes);
+  app.use("/auth", express.json(), authRoutes);
 
   // GraphQL schema
   const schema = makeExecutableSchema({ typeDefs, resolvers });

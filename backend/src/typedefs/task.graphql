@@ -18,3 +18,8 @@ extend type Mutation {
   updateTask(id: ID!, title: String, description: String, status: String): Task
   deleteTask(id: ID!): Boolean
 }
+
+extend type Subscription {
+  taskCreated(user_id: Int!): Task
+}
+
