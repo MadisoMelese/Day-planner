@@ -1,4 +1,3 @@
--- src/db/schema.sql
 
 -- USERS
 CREATE TABLE IF NOT EXISTS users (
@@ -16,7 +15,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
   token TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   revoked BOOLEAN DEFAULT FALSE,
-  ip_address VARCHAR(100),
+  ip_address VARCHAR(128),
   user_agent TEXT
 );
 
@@ -24,7 +23,7 @@ CREATE TABLE IF NOT EXISTS refresh_tokens (
 CREATE TABLE IF NOT EXISTS user_devices (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-  ip_address VARCHAR(100),
+  ip_address VARCHAR(128),
   user_agent TEXT,
   login_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   is_revoked BOOLEAN DEFAULT false,
@@ -46,9 +45,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 CREATE TABLE IF NOT EXISTS workspaces (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
+  description TEXT,
   created_by INTEGER REFERENCES users(id),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
 
 -- WORKSPACE MEMBERSHIPS
 CREATE TABLE IF NOT EXISTS workspace_memberships (
