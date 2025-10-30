@@ -9,11 +9,7 @@ const GET_WORKSPACE = gql`
       id
       name
       description
-      tasks {
-        id
-        title
-        status
-      }
+      
     }
   }
 `;
@@ -48,7 +44,16 @@ export default function WorkspaceDetail() {
   };
 
   if (loading) return <p className="text-center mt-10 text-gray-400">Loading...</p>;
-  if (error) return <p className="text-center mt-10 text-red-500">Error fetching workspace!</p>;
+ if (error) {
+  console.error("GraphQL error:", error);
+  return (
+    <div className="text-center mt-10 text-red-400">
+      <p>❌ Error fetching workspace:</p>
+      <pre className="text-sm text-gray-400">{error.message}</pre>
+    </div>
+  );
+}
+
 
   const ws = data?.getWorkspace;
 
@@ -74,13 +79,14 @@ export default function WorkspaceDetail() {
         </button>
       </form>
 
-      <div className="grid md:grid-cols-3 sm:grid-cols-2 gap-4">
-        {ws.tasks.length > 0 ? (
-          ws.tasks.map((t) => <TaskCard key={t.id} task={t} />)
-        ) : (
-          <p className="text-gray-500 italic">No tasks yet.</p>
-        )}
-      </div>
+ <div className="grid md:grid-cols-3 sm:grid-cols-2 gap-4">
+  {Array.isArray(ws?.tasks) && ws.tasks.length > 0 ? (
+    ws.tasks.map((t) => <TaskCard key={t.id} task={t} />)
+  ) : (
+    <p className="text-gray-500 italic">No tasks yet.</p>
+  )}
+</div>
+
     </div>
   );
 }
