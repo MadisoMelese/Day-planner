@@ -3,15 +3,19 @@ import { AppError } from "../utils/errors.js";
 
 const workspaceResolver = {
   Query: {
-    async getWorkspace(_, { id }) {
-      const result = await pool.query("SELECT * FROM workspaces WHERE id = $1", [id]);
+  getWorkspace: async (_, { id }) => {
+  try {
+    const result = await pool.query("SELECT * FROM workspaces WHERE id = $1", [id]);
+    if (result.rows.length === 0) {
+      throw new Error("Workspace not found");
+    }
+    return result.rows[0];
+  } catch (err) {
+    console.error("❌ Detailed error in getWorkspace:", err);
+    throw err; // ⚡ show real error for debugging
+  }
+},
 
-      if (result.rows.length === 0) {
-        throw new AppError("Workspace not found", 404);
-      }
-
-      return result.rows[0];
-    },
 
     async getAllWorkspaces() {
       const result = await pool.query("SELECT * FROM workspaces ORDER BY id DESC");

@@ -1,11 +1,12 @@
 type Workspace {
   id: ID!
   name: String!
-  owner_id: Int!
+  owner_id: Int
   description: String
-  created_by: Int
   created_at: String
+  tasks: [Task]
 }
+
 type Query {
   getWorkspace(id: ID!): Workspace
   getAllWorkspaces: [Workspace]
@@ -27,4 +28,6 @@ extend type Mutation {
   updateWorkspace(id: ID!, name: String, description: String): Workspace!
   deleteWorkspace(id: ID!): Boolean!
 }
+
+
 
