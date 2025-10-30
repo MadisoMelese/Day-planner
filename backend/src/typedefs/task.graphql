@@ -19,7 +19,16 @@ extend type Mutation {
   deleteTask(id: ID!): Boolean
 }
 
+
+
 extend type Subscription {
   taskCreated(user_id: Int!): Task
+  taskUpdated: Task
+  taskDeleted: Task
 }
+
+type Subscription {
+  taskStatusUpdated(workspaceId: ID!): Task
+}
+
 

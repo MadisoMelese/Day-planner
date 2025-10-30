@@ -44,6 +44,7 @@
 
 
 import { pool } from "../db/connect.js";
+import { AppError } from "../utils/errors.js";
 import { logEvent } from "../utils/logger.js";
 import { pubsub } from "../utils/pubsub.js";
 
@@ -62,8 +63,13 @@ export const taskResolvers = {
     },
   },
 
-  Mutation: {
+ Mutation: {
+    // ✅ CREATE TASK
     createTask: async (_, { user_id, title, description }) => {
+      if (!title || title.trim() === "") {
+        throw new AppError("Task title required", 400);
+      }
+
       const result = await pool.query(
         `INSERT INTO tasks (user_id, title, description)
          VALUES ($1, $2, $3)
@@ -72,15 +78,22 @@ export const taskResolvers = {
       );
 
       const newTask = result.rows[0];
+
       await logEvent(user_id, "info", "TASK_CREATED", { title });
 
-      // 🔥 Notify all subscribers that a new task is created
-      pubsub.emit("TASK_CREATED", newTask);
+      // 🔥 Publish (instead of emit)
+      pubsub.publish("TASK_CREATED", newTask);
 
       return newTask;
     },
 
+    // ✅ UPDATE TASK
     updateTask: async (_, { id, title, description, status }) => {
+      const check = await pool.query(`SELECT * FROM tasks WHERE id = $1`, [id]);
+      if (check.rows.length === 0) {
+        throw new AppError("Task not found", 404);
+      }
+
       const result = await pool.query(
         `UPDATE tasks 
          SET title = COALESCE($2, title),
@@ -91,52 +104,50 @@ export const taskResolvers = {
          RETURNING *`,
         [id, title, description, status]
       );
+
       const updatedTask = result.rows[0];
       await logEvent(updatedTask.user_id, "info", "TASK_UPDATED", { id });
+
+      // 🔥 Also publish task updates in real time
+      pubsub.publish("TASK_UPDATED", updatedTask);
+
       return updatedTask;
     },
 
+    // ✅ DELETE TASK
     deleteTask: async (_, { id }) => {
+      const check = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
+      if (check.rows.length === 0) {
+        throw new AppError("Task not found", 404);
+      }
+
       await pool.query("DELETE FROM tasks WHERE id = $1", [id]);
       await logEvent(null, "warn", "TASK_DELETED", { id });
+
+      pubsub.publish("TASK_DELETED", { id });
+
       return true;
     },
   },
 
+  // ✅ SUBSCRIPTIONS (live updates)
   Subscription: {
+    // When new task is created
     taskCreated: {
-      subscribe: (_, { user_id }) => {
-        const iterator = (async function* () {
-          const queue = [];
-          let finished = false;
+      subscribe: (_, { user_id }) => pubsub.asyncIterator("TASK_CREATED"),
+      resolve: (payload) => payload,
+    },
 
-          const handler = (task) => {
-            if (task.user_id === user_id) queue.push(task);
-          };
+    // When task is updated
+    taskUpdated: {
+      subscribe: () => pubsub.asyncIterator("TASK_UPDATED"),
+      resolve: (payload) => payload,
+    },
 
-          pubsub.on("TASK_CREATED", handler);
-
-          try {
-            while (!finished) {
-              // wait until something is in the queue
-              if (queue.length === 0) {
-                await new Promise((resolve) => {
-                  const onceHandler = () => resolve();
-                  pubsub.once("TASK_CREATED", onceHandler);
-                });
-              } else {
-                yield queue.shift();
-              }
-            }
-          } finally {
-            finished = true;
-            pubsub.off("TASK_CREATED", handler);
-          }
-        })();
-
-        return iterator;
-      },
-      resolve: (payload) => payload, // OK: payload is the task object we yield
+    // When task is deleted
+    taskDeleted: {
+      subscribe: () => pubsub.asyncIterator("TASK_DELETED"),
+      resolve: (payload) => payload,
     },
   },
 };
