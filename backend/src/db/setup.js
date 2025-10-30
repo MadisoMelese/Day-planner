@@ -15,3 +15,13 @@ const sql = fs.readFileSync("src/db/init.sql").toString()
     process.exit(1);
   }
 })();
+await pool.query(`
+  CREATE TABLE IF NOT EXISTS workspaces (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    created_by INTEGER,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  );
+`);
+

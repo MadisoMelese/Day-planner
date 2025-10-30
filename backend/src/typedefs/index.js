@@ -8,3 +8,6 @@ const typeDefs = readdirSync(__dirname)
   .map((file) => readFileSync(path.join(__dirname, file), "utf8"));
 
 export default typeDefs;
+
+
+
