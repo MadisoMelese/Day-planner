@@ -71,20 +71,37 @@ async function start() {
   const serverCleanup = useServer({ schema }, wsServer);
 
   // Apollo Server
-  const server = new ApolloServer({
-    schema,
-    plugins: [
-      {
-        async serverWillStart() {
-          return {
-            async drainServer() {
-              await serverCleanup?.dispose?.();
-            },
-          };
-        },
+ const server = new ApolloServer({
+  schema,
+  formatError: (err) => {
+    // If it's our custom AppError, return clean message
+    if (err.originalError?.statusCode) {
+      return {
+        success: false,
+        message: err.message,
+        code: err.originalError.statusCode,
+      };
+    }
+
+    // Otherwise, return a default fallback
+    return {
+      success: false,
+      message: "Internal Server Error",
+    };
+  },
+  plugins: [
+    {
+      async serverWillStart() {
+        return {
+          async drainServer() {
+            await serverCleanup?.dispose?.();
+          },
+        };
       },
-    ],
-  });
+    },
+  ],
+});
+
 
   await server.start();
   server.applyMiddleware({ app, path: "/graphql" });

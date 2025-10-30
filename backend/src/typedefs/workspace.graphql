@@ -6,6 +6,16 @@ type Workspace {
   created_by: Int
   created_at: String
 }
+type Query {
+  getWorkspace(id: ID!): Workspace
+  getAllWorkspaces: [Workspace]
+}
+
+type Mutation {
+  createWorkspace(name: String!, description: String): Workspace
+  updateWorkspace(id: ID!, name: String, description: String): Workspace
+  deleteWorkspace(id: ID!): Boolean
+}
 
 extend type Query {
   getAllWorkspaces: [Workspace!]!
