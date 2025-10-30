@@ -45,13 +45,17 @@ import typeDefs from "./src/typedefs/index.js";
 import resolvers from "./src/resolvers/index.js";
 import authRoutes from "./src/rest/authRoutes.js";
 import { logEvent } from "./src/utils/logger.js";
-
+import cors from "cors";
 dotenv.config();
 
 async function start() {
   const app = express();
   // app.use(express.json());
-
+app.use(cors({
+  origin: 'http://localhost:5173',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
   // REST auth routes
   app.use("/auth", express.json(), authRoutes);
 
