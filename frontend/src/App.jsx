@@ -5,6 +5,8 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from './pages/Dashboard';
 import WorkspaceDetail from './pages/WorkspaceDetail';
+import Navbar from "./components/Navbar";
+import ProtectedRoute from "./components/ProtectedRoute";
 
 const TEST_QUERY = gql`
   query {
@@ -19,19 +21,36 @@ const App = () => {
   if (error) return <p className="text-red-500">Error: {error.message}</p>;
 
   return (
-<Router>
-      <div className="text-white min-h-screen bg-gray-900">
-        <nav className="p-4 flex justify-center gap-6 bg-gray-800">
-          <Link to="/login" className="hover:text-blue-400">Login</Link>
-          <Link to="/register" className="hover:text-green-400">Register</Link>
-        </nav>
+ <Router>
+      <div className="min-h-screen bg-gray-900 text-white">
+        {/* Show Navbar only when user is logged in */}
+        {localStorage.getItem("token") && <Navbar />}
 
         <Routes>
+          {/* Public Routes */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-<Route path="/workspace/:id" element={<WorkspaceDetail />} />
 
+          {/* Protected Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/workspace/:id"
+            element={
+              <ProtectedRoute>
+                <WorkspaceDetail />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Default Redirect */}
+          <Route path="*" element={<Login />} />
         </Routes>
       </div>
     </Router>
