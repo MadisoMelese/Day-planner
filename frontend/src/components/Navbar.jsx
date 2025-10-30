@@ -11,7 +11,7 @@ export default function Navbar() {
   return (
     <nav className="bg-gray-800 text-white px-6 py-3 flex justify-between items-center shadow-md">
       <Link to="/dashboard" className="text-xl font-bold text-blue-400 hover:text-blue-500">
-        Task Organizer
+        Task Nest
       </Link>
 
       <div className="flex items-center gap-5">
