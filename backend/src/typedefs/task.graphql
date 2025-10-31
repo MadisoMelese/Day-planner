@@ -1,6 +1,6 @@
 type Task {
   id: ID!
-  user_id: Int!
+  workspace_id: Int!
   title: String!
   description: String
   status: String!
@@ -9,26 +9,27 @@ type Task {
 }
 
 extend type Query {
-  getTasks(user_id: Int!): [Task]
+  getTasks(workspaceId: ID!): [Task!]!
   getTaskById(id: ID!): Task
 }
 
 extend type Mutation {
-  createTask(user_id: Int!, title: String!, description: String): Task
-  updateTask(id: ID!, title: String, description: String, status: String): Task
-  deleteTask(id: ID!): Boolean
+  createTask(workspaceId: ID!, title: String!, description: String): Task!
+  updateTask(id: ID!, title: String, description: String, status: String): Task!
+  deleteTask(id: ID!): Boolean!
 }
 
 
 
+
 extend type Subscription {
-  taskCreated(user_id: Int!): Task
+  taskCreated(workspace_id: Int!): Task
   taskUpdated: Task
   taskDeleted: Task
 }
 
 type Subscription {
-  taskStatusUpdated(workspaceId: ID!): Task
+  taskStatusUpdated(workspace_id: ID!): Task
 }
 
 

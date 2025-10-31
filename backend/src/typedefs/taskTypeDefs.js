@@ -1,7 +1,7 @@
 export const taskTypeDefs = `#graphql
   type Task {
     id: ID!
-    user_id: Int!
+    workspace_id: Int!
     title: String!
     description: String
     status: String!
@@ -10,12 +10,12 @@ export const taskTypeDefs = `#graphql
   }
 
   extend type Query {
-    getTasks(user_id: Int!): [Task]
+    getTasks(workspace_id: Int!): [Task]
     getTaskById(id: ID!): Task
   }
 
   extend type Mutation {
-    createTask(user_id: Int!, title: String!, description: String): Task
+    createTask(workspace_id: Int!, title: String!, description: String): Task
     updateTask(id: ID!, title: String, description: String, status: String): Task
     deleteTask(id: ID!): Boolean
   }

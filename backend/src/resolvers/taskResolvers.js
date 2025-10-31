@@ -49,86 +49,104 @@ import { logEvent } from "../utils/logger.js";
 import { pubsub } from "../utils/pubsub.js";
 
 export const taskResolvers = {
-  Query: {
-    getTasks: async (_, { user_id }) => {
-      const result = await pool.query(
-        "SELECT * FROM tasks WHERE user_id = $1 ORDER BY created_at DESC",
-        [user_id]
-      );
-      return result.rows;
+Query: {
+    // ✅ Get all tasks in a specific workspace
+    getTasks: async (_, { workspaceId }) => {
+      try {
+        const result = await pool.query(
+          "SELECT * FROM tasks WHERE workspace_id = $1 ORDER BY created_at DESC",
+          [workspaceId]
+        );
+        return result.rows;
+      } catch (err) {
+        console.error("❌ Error fetching tasks:", err);
+        throw new Error("Failed to fetch tasks");
+      }
     },
+
+    // ✅ Get a single task
     getTaskById: async (_, { id }) => {
-      const result = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
-      return result.rows[0];
+      try {
+        const result = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
+        return result.rows[0];
+      } catch (err) {
+        console.error("❌ Error fetching task:", err);
+        throw new Error("Failed to fetch task");
+      }
     },
   },
+
 
  Mutation: {
-    // ✅ CREATE TASK
-    createTask: async (_, { user_id, title, description }) => {
-      if (!title || title.trim() === "") {
-        throw new AppError("Task title required", 400);
+    // ✅ Create a task inside a workspace
+    createTask: async (_, { workspaceId, title, description }) => {
+      try {
+        if (!title || !workspaceId) throw new Error("Workspace ID and title are required");
+
+        // Check workspace exists
+        const workspaceExists = await pool.query("SELECT id FROM workspaces WHERE id = $1", [
+          workspaceId,
+        ]);
+        if (workspaceExists.rowCount === 0) throw new Error("Workspace not found");
+
+        const result = await pool.query(
+          `INSERT INTO tasks (workspace_id, title, description, status, created_at)
+VALUES ($1, $2, $3, 'pending', NOW())
+
+
+           RETURNING *`,
+          [workspaceId, title, description || null]
+        );
+
+        const newTask = result.rows[0];
+        await logEvent(null, "info", "TASK_CREATED", { title, workspaceId });
+        return newTask;
+      } catch (err) {
+        console.error("❌ Error creating task:", err);
+        throw new AppError(err.message || "Failed to create task");
       }
-
-      const result = await pool.query(
-        `INSERT INTO tasks (user_id, title, description)
-         VALUES ($1, $2, $3)
-         RETURNING *`,
-        [user_id, title, description]
-      );
-
-      const newTask = result.rows[0];
-
-      await logEvent(user_id, "info", "TASK_CREATED", { title });
-
-      // 🔥 Publish (instead of emit)
-      pubsub.publish("TASK_CREATED", newTask);
-
-      return newTask;
     },
 
-    // ✅ UPDATE TASK
+    // ✅ Update a task
     updateTask: async (_, { id, title, description, status }) => {
-      const check = await pool.query(`SELECT * FROM tasks WHERE id = $1`, [id]);
-      if (check.rows.length === 0) {
-        throw new AppError("Task not found", 404);
+      try {
+        const result = await pool.query(
+          `UPDATE tasks
+           SET title = COALESCE($2, title),
+               description = COALESCE($3, description),
+               status = COALESCE($4, status),
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $1
+           RETURNING *`,
+          [id, title, description, status]
+        );
+
+        if (result.rowCount === 0) throw new AppError("Task not found");
+
+        const updatedTask = result.rows[0];
+        await logEvent(null, "info", "TASK_UPDATED", { id });
+        return updatedTask;
+      } catch (err) {
+        console.error("❌ Error updating task:", err);
+        throw new AppError("Failed to update task");
       }
-
-      const result = await pool.query(
-        `UPDATE tasks 
-         SET title = COALESCE($2, title),
-             description = COALESCE($3, description),
-             status = COALESCE($4, status),
-             updated_at = CURRENT_TIMESTAMP
-         WHERE id = $1
-         RETURNING *`,
-        [id, title, description, status]
-      );
-
-      const updatedTask = result.rows[0];
-      await logEvent(updatedTask.user_id, "info", "TASK_UPDATED", { id });
-
-      // 🔥 Also publish task updates in real time
-      pubsub.publish("TASK_UPDATED", updatedTask);
-
-      return updatedTask;
     },
 
-    // ✅ DELETE TASK
+    // ✅ Delete a task
     deleteTask: async (_, { id }) => {
-      const check = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
-      if (check.rows.length === 0) {
-        throw new AppError("Task not found", 404);
+      try {
+        const result = await pool.query("DELETE FROM tasks WHERE id = $1 RETURNING id", [id]);
+        if (result.rowCount === 0) throw new AppError("Task not found");
+
+        await logEvent(null, "warn", "TASK_DELETED", { id });
+        return true;
+      } catch (err) {
+        console.error("❌ Error deleting task:", err);
+        throw new AppError("Failed to delete task");
       }
-
-      await pool.query("DELETE FROM tasks WHERE id = $1", [id]);
-      await logEvent(null, "warn", "TASK_DELETED", { id });
-
-      pubsub.publish("TASK_DELETED", { id });
-
-      return true;
     },
   },
+
 
   // ✅ SUBSCRIPTIONS (live updates)
   Subscription: {

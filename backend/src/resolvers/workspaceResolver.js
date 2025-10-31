@@ -2,24 +2,30 @@ import { pool } from "../db/connect.js";
 import { AppError } from "../utils/errors.js";
 
 const workspaceResolver = {
-  Query: {
-  getWorkspace: async (_, { id }) => {
-  try {
-    const result = await pool.query("SELECT * FROM workspaces WHERE id = $1", [id]);
-    if (result.rows.length === 0) {
-      throw new Error("Workspace not found");
-    }
-    return result.rows[0];
-  } catch (err) {
-    console.error("❌ Detailed error in getWorkspace:", err);
-    throw err; // ⚡ show real error for debugging
-  }
-},
+ Query: {
+    // ✅ Single workspace + its tasks
+    getWorkspace: async (_, { id }) => {
+      try {
+        // Fetch workspace
+        const workspaceRes = await pool.query(
+          "SELECT * FROM workspaces WHERE id = $1",
+          [id]
+        );
+        if (workspaceRes.rowCount === 0) throw new Error("Workspace not found");
+        const workspace = workspaceRes.rows[0];
 
+        // Fetch tasks linked to it
+        const tasksRes = await pool.query(
+          "SELECT * FROM tasks WHERE workspace_id = $1 ORDER BY created_at DESC",
+          [id]
+        );
 
-    async getAllWorkspaces() {
-      const result = await pool.query("SELECT * FROM workspaces ORDER BY id DESC");
-      return result.rows;
+        workspace.tasks = tasksRes.rows; // ✅ attach tasks here
+        return workspace;
+      } catch (err) {
+        console.error("❌ Error fetching workspace:", err);
+        throw new Error("Failed to fetch workspace");
+      }
     },
   },
 
