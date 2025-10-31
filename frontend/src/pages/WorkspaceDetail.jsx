@@ -3,13 +3,20 @@ import { useQuery, useMutation, gql } from "@apollo/client";
 import TaskCard from "../components/TaskCard";
 import { useState } from "react";
 
+// 🧩 1. All GraphQL queries & mutations
 const GET_WORKSPACE = gql`
   query ($id: ID!) {
     getWorkspace(id: $id) {
       id
       name
       description
-      
+      tasks {
+        id
+        title
+        description
+        status
+        created_at
+      }
     }
   }
 `;
@@ -24,14 +31,36 @@ const CREATE_TASK = gql`
   }
 `;
 
+const UPDATE_TASK = gql`
+  mutation ($id: ID!, $title: String, $status: String) {
+    updateTask(id: $id, title: $title, status: $status) {
+      id
+      title
+      status
+    }
+  }
+`;
+
+const DELETE_TASK = gql`
+  mutation ($id: ID!) {
+    deleteTask(id: $id)
+  }
+`;
+
 export default function WorkspaceDetail() {
   const { id } = useParams();
   const { data, loading, error, refetch } = useQuery(GET_WORKSPACE, {
     variables: { id },
   });
+
+  // 🧩 2. ADD THESE HERE 👇 (after `useQuery`)
   const [createTask] = useMutation(CREATE_TASK);
+  const [updateTask] = useMutation(UPDATE_TASK);
+  const [deleteTask] = useMutation(DELETE_TASK);
+
   const [newTitle, setNewTitle] = useState("");
 
+  // 🧩 3. Then your functions below
   const handleAddTask = async (e) => {
     e.preventDefault();
     try {
@@ -44,19 +73,19 @@ export default function WorkspaceDetail() {
   };
 
   if (loading) return <p className="text-center mt-10 text-gray-400">Loading...</p>;
- if (error) {
-  console.error("GraphQL error:", error);
-  return (
-    <div className="text-center mt-10 text-red-400">
-      <p>❌ Error fetching workspace:</p>
-      <pre className="text-sm text-gray-400">{error.message}</pre>
-    </div>
-  );
-}
-
+  if (error) {
+    console.error("GraphQL error:", error);
+    return (
+      <div className="text-center mt-10 text-red-400">
+        <p>❌ Error fetching workspace:</p>
+        <pre className="text-sm text-gray-400">{error.message}</pre>
+      </div>
+    );
+  }
 
   const ws = data?.getWorkspace;
 
+  // 🧩 4. JSX rendering (show tasks, form, etc.)
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
       <h1 className="text-3xl font-bold mb-2">{ws.name}</h1>
@@ -79,14 +108,27 @@ export default function WorkspaceDetail() {
         </button>
       </form>
 
- <div className="grid md:grid-cols-3 sm:grid-cols-2 gap-4">
-  {Array.isArray(ws?.tasks) && ws.tasks.length > 0 ? (
-    ws.tasks.map((t) => <TaskCard key={t.id} task={t} />)
-  ) : (
-    <p className="text-gray-500 italic">No tasks yet.</p>
-  )}
-</div>
-
+      <div className="grid md:grid-cols-3 sm:grid-cols-2 gap-4">
+        {ws?.tasks && ws.tasks.length > 0 ? (
+          ws.tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onDelete={async () => {
+                await deleteTask({ variables: { id: task.id } });
+                refetch();
+              }}
+              onToggleStatus={async () => {
+                const newStatus = task.status === "pending" ? "done" : "pending";
+                await updateTask({ variables: { id: task.id, status: newStatus } });
+                refetch();
+              }}
+            />
+          ))
+        ) : (
+          <p className="text-gray-500 italic">No tasks yet.</p>
+        )}
+      </div>
     </div>
   );
 }
