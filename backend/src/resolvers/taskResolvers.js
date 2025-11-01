@@ -42,14 +42,13 @@
 //   },
 // };
 
-
 import { pool } from "../db/connect.js";
 import { AppError } from "../utils/errors.js";
 import { logEvent } from "../utils/logger.js";
 import { pubsub } from "../utils/pubsub.js";
 
 export const taskResolvers = {
-Query: {
+  Query: {
     // ✅ Get all tasks in a specific workspace
     getTasks: async (_, { workspaceId }) => {
       try {
@@ -67,7 +66,9 @@ Query: {
     // ✅ Get a single task
     getTaskById: async (_, { id }) => {
       try {
-        const result = await pool.query("SELECT * FROM tasks WHERE id = $1", [id]);
+        const result = await pool.query("SELECT * FROM tasks WHERE id = $1", [
+          id,
+        ]);
         return result.rows[0];
       } catch (err) {
         console.error("❌ Error fetching task:", err);
@@ -76,18 +77,20 @@ Query: {
     },
   },
 
-
- Mutation: {
+  Mutation: {
     // ✅ Create a task inside a workspace
     createTask: async (_, { workspaceId, title, description }) => {
       try {
-        if (!title || !workspaceId) throw new Error("Workspace ID and title are required");
+        if (!title || !workspaceId)
+          throw new Error("Workspace ID and title are required");
 
         // Check workspace exists
-        const workspaceExists = await pool.query("SELECT id FROM workspaces WHERE id = $1", [
-          workspaceId,
-        ]);
-        if (workspaceExists.rowCount === 0) throw new Error("Workspace not found");
+        const workspaceExists = await pool.query(
+          "SELECT id FROM workspaces WHERE id = $1",
+          [workspaceId]
+        );
+        if (workspaceExists.rowCount === 0)
+          throw new Error("Workspace not found");
 
         const result = await pool.query(
           `INSERT INTO tasks (workspace_id, title, description, status, created_at)
@@ -135,7 +138,10 @@ VALUES ($1, $2, $3, 'pending', NOW())
     // ✅ Delete a task
     deleteTask: async (_, { id }) => {
       try {
-        const result = await pool.query("DELETE FROM tasks WHERE id = $1 RETURNING id", [id]);
+        const result = await pool.query(
+          "DELETE FROM tasks WHERE id = $1 RETURNING id",
+          [id]
+        );
         if (result.rowCount === 0) throw new AppError("Task not found");
 
         await logEvent(null, "warn", "TASK_DELETED", { id });
@@ -146,7 +152,6 @@ VALUES ($1, $2, $3, 'pending', NOW())
       }
     },
   },
-
 
   // ✅ SUBSCRIPTIONS (live updates)
   Subscription: {

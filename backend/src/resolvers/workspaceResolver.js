@@ -2,11 +2,21 @@ import { pool } from "../db/connect.js";
 import { AppError } from "../utils/errors.js";
 
 const workspaceResolver = {
- Query: {
-    // ✅ Single workspace + its tasks
+  Query: {
+    // Get all workspaces
+    getAllWorkspaces: async () => {
+      try {
+        const result = await pool.query("SELECT * FROM workspaces ORDER BY id DESC");
+        return result.rows;
+      } catch (err) {
+        console.error("❌ Error fetching all workspaces:", err);
+        throw new Error("Failed to fetch workspaces");
+      }
+    },
+
+    // Single workspace + tasks
     getWorkspace: async (_, { id }) => {
       try {
-        // Fetch workspace
         const workspaceRes = await pool.query(
           "SELECT * FROM workspaces WHERE id = $1",
           [id]
@@ -14,13 +24,13 @@ const workspaceResolver = {
         if (workspaceRes.rowCount === 0) throw new Error("Workspace not found");
         const workspace = workspaceRes.rows[0];
 
-        // Fetch tasks linked to it
+        // Fetch related tasks
         const tasksRes = await pool.query(
           "SELECT * FROM tasks WHERE workspace_id = $1 ORDER BY created_at DESC",
           [id]
         );
+        workspace.tasks = tasksRes.rows;
 
-        workspace.tasks = tasksRes.rows; // ✅ attach tasks here
         return workspace;
       } catch (err) {
         console.error("❌ Error fetching workspace:", err);
@@ -34,7 +44,6 @@ const workspaceResolver = {
       if (!name || name.trim() === "") {
         throw new AppError("Workspace name required", 400);
       }
-      
 
       const result = await pool.query(
         "INSERT INTO workspaces (name, description) VALUES ($1, $2) RETURNING *",
