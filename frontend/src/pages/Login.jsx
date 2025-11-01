@@ -15,6 +15,7 @@ export default function Login() {
       });
       localStorage.setItem("token", res.data.accessToken);
       setMessage("✅ Login successful!");
+      window.location.href = "/dashboard";
     } catch (err) {
       setMessage("❌ Invalid credentials");
     }
